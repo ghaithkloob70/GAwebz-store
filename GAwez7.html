@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GAwebz | متجر الملابس العصرية</title>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background: #1a0b0e;
+            color: #333;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* شاشة الترحيب */
+        .splash-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #4a0a1a;
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        .splash-content {
+            text-align: center;
+            animation: fadeInScale 0.8s ease;
+        }
+
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .splash-logo {
+            font-size: 5rem;
+            font-weight: 800;
+            color: #fff;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+            margin-bottom: 1rem;
+            animation: glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes glow {
+            from {
+                text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+            }
+            to {
+                text-shadow: 0 0 30px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        .splash-logo span {
+            color: #ffd700;
+        }
+
+        .splash-welcome {
+            font-size: 1.5rem;
+            color: #fff;
+            margin-bottom: 2rem;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease 0.3s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+        }
+
+        .splash-btn {
+            background: linear-gradient(135deg, #ffd700 0%, #ffb347 100%);
+            color: #4a0a1a;
+            padding: 1rem 2.5rem;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0;
+            animation: fadeInUp 0.6s ease 0.6s forwards;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+
+        .splash-btn:hover {
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+
+        /* المحتوى الرئيسي - مخفي في البداية */
+        .main-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        /* تخصيص شريط التمرير */
+        ::-webkit-scrollbar {
+            width: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            border-radius: 5px;
+        }
+
+        /* الهيدر والتنقل */
+        .navbar {
+            background: linear-gradient(135deg, #8b0000 0%, #4a0a1a 100%);
+            padding: 1rem 5%;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.2);
+        }
+
+        .nav-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .logo h1 {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 800;
+            letter-spacing: 2px;
+        }
+
+        .logo span {
+            color: #ffd700;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: #ffd700;
+        }
+
+        /* زر تسجيل الدخول */
+        .google-login {
+            background: rgba(255,255,255,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 25px;
+            border: 1px solid rgba(255,215,0,0.5);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .google-login:hover {
+            background: rgba(255,215,0,0.3);
+            transform: translateY(-2px);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            color: white;
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            cursor: pointer;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .cart-icon {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .cart-count {
+            position: absolute;
+            top: -8px;
+            right: -12px;
+            background: #ffd700;
+            color: #8b0000;
+            border-radius: 50%;
+            padding: 2px 6px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* القسم الرئيسي */
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1441984904996-e0b6ba687e04?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 70vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            margin-top: 70px;
+        }
+
+        .hero-content h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        /* أزرار إدارة المنتجات */
+        .admin-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .admin-btn {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .admin-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        /* المنتجات */
+        .products {
+            padding: 4rem 5%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #c41e3a;
+            position: relative;
+        }
+
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 3px;
+            background: linear-gradient(135deg, #c41e3a 0%, #ffd700 100%);
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            border-color: #ffd700;
+        }
+
+        .product-image {
+            width: 100%;
+            height: 300px;
+            object-fit: cover;
+        }
+
+        .product-info {
+            padding: 1.5rem;
+        }
+
+        .product-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+
+        .product-price {
+            font-size: 1.3rem;
+            color: #c41e3a;
+            font-weight: 800;
+            margin: 0.5rem 0;
+        }
+
+        .add-to-cart {
+            background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+            color: white;
+            border: none;
+            padding: 0.8rem;
+            width: 100%;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .delete-product {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ff4757;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+        }
+
+        .product-card:hover .delete-product {
+            display: block;
+        }
+
+        /* مودال إضافة منتج */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .modal-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            padding: 2rem;
+            animation: slideUp 0.3s ease;
+        }
+
+        .modal-content input,
+        .modal-content textarea {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        /* سلة التسوق */
+        .cart-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cart-content {
+            background: white;
+            width: 90%;
+            max-width: 500px;
+            border-radius: 20px;
+            padding: 2rem;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        /* التذييل */
+        .footer {
+            background: linear-gradient(135deg, #8b0000 0%, #4a0a1a 100%);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+
+        .contact-info {
+            margin-top: 1rem;
+            font-size: 1rem;
+        }
+
+        .contact-info p {
+            margin: 0.5rem 0;
+        }
+
+        .contact-info i {
+            margin-left: 0.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .nav-links {
+                gap: 1rem;
+            }
+            .hero-content h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- شاشة الترحيب -->
+    <div class="splash-screen" id="splashScreen">
+        <div class="splash-content">
+            <div class="splash-logo">GA<span>webz</span></div>
+            <div class="splash-welcome">مرحباً بك في عالم الأناقة والجودة</div>
+            <button class="splash-btn" onclick="hideSplash()">ابدأ التسوق <i class="fas fa-arrow-left"></i></button>
+        </div>
+    </div>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content" id="mainContent">
+        <!-- شريط التنقل -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="logo">
+                    <h1>GA<span>webz</span></h1>
+                </div>
+                <ul class="nav-links">
+                    <li><a href="#home">الرئيسية</a></li>
+                    <li><a href="#products">المنتجات</a></li>
+                    <li><a href="#about">من نحن</a></li>
+                    <li><a href="#contact">اتصل بنا</a></li>
+                    <li>
+                        <div id="authSection">
+                            <div class="google-login" onclick="signInWithGoogle()">
+                                <i class="fab fa-google"></i>
+                                <span>تسجيل الدخول</span>
+                            </div>
+                        </div>
+                    </li>
+                    <li>
+                        <div class="cart-icon" onclick="toggleCart()">
+                            <i class="fas fa-shopping-cart" style="color: white; font-size: 1.5rem;"></i>
+                            <span class="cart-count" id="cartCount">0</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <!-- القسم الرئيسي -->
+        <section id="home" class="hero">
+            <div class="hero-content">
+                <h1>أهلاً بك في GAwebz</h1>
+                <p>أحدث صيحات الموضة بأفضل الأسعار - تسوق الآن واستمتع بتجربة فريدة</p>
+                <button class="btn" onclick="document.getElementById('products').scrollIntoView({behavior: 'smooth'})">تسوق الآن</button>
+            </div>
+        </section>
+
+        <!-- أزرار إدارة المنتجات (تظهر فقط للمسؤول) -->
+        <div id="adminPanel" style="display: none; text-align: center; margin-top: 2rem;">
+            <div class="admin-actions">
+                <button class="admin-btn" onclick="showAddProductModal()">
+                    <i class="fas fa-plus"></i> إضافة منتج جديد
+                </button>
+            </div>
+        </div>
+
+        <!-- المنتجات -->
+        <section id="products" class="products">
+            <h2 class="section-title">منتجاتنا المميزة</h2>
+            <div class="products-grid" id="productsGrid"></div>
+        </section>
+
+        <!-- من نحن -->
+        <section id="about" class="products" style="background: #f9f9f9; margin: 2rem 0; border-radius: 20px;">
+            <h2 class="section-title">من نحن</h2>
+            <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+                <p style="font-size: 1.1rem; line-height: 1.8;">GAwebz هو متجر إلكتروني متخصص في بيع الملابس العصرية بأحدث التصاميم. نقدم لكم تشكيلة واسعة من الملابس التي تناسب جميع الأذواق، مع ضمان الجودة العالية وأفضل الأسعار.</p>
+            </div>
+        </section>
+
+        <!-- سلة التسوق -->
+        <div id="cartModal" class="cart-modal">
+            <div class="cart-content">
+                <div class="cart-header" style="display: flex; justify-content: space-between; margin-bottom: 1rem;">
+                    <h3>سلة التسوق</h3>
+                    <span class="close-cart" onclick="toggleCart()" style="cursor: pointer; font-size: 1.5rem;">&times;</span>
+                </div>
+                <div id="cartItems"></div>
+                <div class="cart-total" id="cartTotal" style="margin-top: 1rem; font-size: 1.2rem; font-weight: bold;"></div>
+                <button class="checkout-btn" onclick="checkout()" style="background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%); color: white; width: 100%; padding: 1rem; border: none; border-radius: 10px; margin-top: 1rem; cursor: pointer;">إتمام الشراء</button>
+            </div>
+        </div>
+
+        <!-- مودال إضافة منتج -->
+        <div id="addProductModal" class="modal">
+            <div class="modal-content">
+                <h3>إضافة منتج جديد</h3>
+                <input type="text" id="productName" placeholder="اسم المنتج">
+                <input type="number" id="productPrice" placeholder="السعر">
+                <input type="text" id="productImage" placeholder="رابط الصورة">
+                <input type="text" id="productCategory" placeholder="التصنيف">
+                <div class="modal-buttons">
+                    <button class="admin-btn" onclick="addNewProduct()">إضافة</button>
+                    <button class="admin-btn" onclick="closeAddProductModal()" style="background: #999;">إلغاء</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- التذييل -->
+        <footer class="footer" id="contact">
+            <div class="social-links">
+                <a href="#"><i class="fab fa-facebook"></i></a>
+                <a href="#"><i class="fab fa-instagram"></i></a>
+                <a href="#"><i class="fab fa-twitter"></i></a>
+                <a href="#"><i class="fab fa-whatsapp"></i></a>
+            </div>
+            <div class="contact-info">
+                <p><i class="fas fa-envelope"></i> ghaithkloob7@gmail.com</p>
+                <p><i class="fas fa-phone"></i> 0795270657</p>
+            </div>
+            <p>&copy; 2024 GAwebz - جميع الحقوق محفوظة</p>
+        </footer>
+    </div>
+
+    <script>
+        // تكوين Firebase (للتسجيل عبر Google)
+        const firebaseConfig = {
+            apiKey: "AIzaSyDummyKeyForDemo", // هذا مفتاح تجريبي، يجب استبداله بمفتاح حقيقي
+            authDomain: "gawebz-demo.firebaseapp.com",
+            projectId: "gawebz-demo",
+            storageBucket: "gawebz-demo.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "1:123456789:web:abcdef123456"
+        };
+
+        // تهيئة Firebase (للتوضيح، في التطبيق الحقيقي يجب استخدام مفتاح حقيقي)
+        let auth = null;
+        let currentUser = null;
+
+        // قاعدة بيانات المنتجات
+        let products = [
+            {
+                id: 1,
+                name: "قميص قطني أنيق",
+                price: 35,
+                image: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+                category: "رجالي"
+            },
+            {
+                id: 2,
+                name: "قميص  قطني مميز",
+                price: 120,
+                image: "https://images.unsplash.com/photo-https://share.google/9zyN7L1VymZHDWmrR",
+                category: "رجالي"
+            },
+            {
+                id: 3,
+                name: "جينز كلاسيك",
+                price: 65,
+                image: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=80",
+                category: "رجالي"
+            },
+            {
+                id: 4,
+                name: "بلوزة كاجوال",
+                price: 45,
+                image: "https://images.unsplash.com/photo-https://share.google/86XW9tjYcwd8gNdNK",
+                category: "نسائي"
+            }
+        ];
+
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
+
+        // إخفاء شاشة الترحيب
+        function hideSplash() {
+            const splash = document.getElementById('splashScreen');
+            const mainContent = document.getElementById('mainContent');
+            splash.style.opacity = '0';
+            setTimeout(() => {
+                splash.style.display = 'none';
+                mainContent.style.display = 'block';
+                setTimeout(() => {
+                    mainContent.style.opacity = '1';
+                }, 50);
+            }, 800);
+        }
+
+        // عرض المنتجات
+        function displayProducts() {
+            const productsGrid = document.getElementById('productsGrid');
+            const isAdmin = currentUser && currentUser.email === 'ghaithkloob7@gmail.com';
+            
+            productsGrid.innerHTML = products.map(product => `
+                <div class="product-card">
+                    <img src="${product.image}" alt="${product.name}" class="product-image" onerror="this.src='https://via.placeholder.com/300'">
+                    <div class="product-info">
+                        <h3 class="product-title">${product.name}</h3>
+                        <p class="product-price">${product.price} د.ل</p>
+                        <button class="add-to-cart" onclick="addToCart(${product.id})">
+                            <i class="fas fa-shopping-cart"></i> أضف إلى السلة
+                        </button>
+                    </div>
+                    ${isAdmin ? `<button class="delete-product" onclick="deleteProduct(${product.id})"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+            `).join('');
+        }
+
+        // إضافة إلى السلة
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            const existingItem = cart.find(item => item.id === productId);
+            
+            if (existingItem) {
+                existingItem.quantity += 1;
+            } else {
+                cart.push({
+                    ...product,
+                    quantity: 1
+                });
+            }
+            
+            updateCart();
+            showNotification('تم إضافة المنتج إلى السلة!');
+        }
+
+        // تحديث السلة
+        function updateCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartCount();
+            displayCartItems();
+        }
+
+        function updateCartCount() {
+            const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
+            document.getElementById('cartCount').textContent = totalItems;
+        }
+
+        function displayCartItems() {
+            const cartItemsDiv = document.getElementById('cartItems');
+            const cartTotalDiv = document.getElementById('cartTotal');
+            
+            if (cart.length === 0) {
+                cartItemsDiv.innerHTML = '<p style="text-align: center;">سلة التسوق فارغة</p>';
+                cartTotalDiv.innerHTML = 'المجموع: 0 د.ل';
+                return;
+            }
+            
+            cartItemsDiv.innerHTML = cart.map(item => `
+                <div class="cart-item" style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid #eee;">
+                    <div>
+                        <strong>${item.name}</strong><br>
+                        ${item.price} د.ل × ${item.quantity}
+                    </div>
+                    <div>
+                        <strong>${item.price * item.quantity} د.ل</strong>
+                        <button class="remove-item" onclick="removeFromCart(${item.id})" style="background: #ff4757; color: white; border: none; padding: 0.2rem 0.5rem; border-radius: 5px; margin-right: 0.5rem; cursor: pointer;">✕</button>
+                    </div>
+                </div>
+            `).join('');
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            cartTotalDiv.innerHTML = `المجموع: ${total} د.ل`;
+        }
+
+        function removeFromCart(productId) {
+            cart = cart.filter(item => item.id !== productId);
+            updateCart();
+        }
+
+        function toggleCart() {
+            const modal = document.getElementById('cartModal');
+            if (modal.style.display === 'flex') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'flex';
+                displayCartItems();
+            }
+        }
+
+        function checkout() {
+            if (cart.length === 0) {
+                alert('سلة التسوق فارغة! أضف بعض المنتجات أولاً.');
+                return;
+            }
+            
+            const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+            alert(`شكراً لتسوقكم من GAwebz!\nالمبلغ الإجمالي: ${total} د.ل\nسيتواصل معكم فريق الدعم لتأكيد الطلب.\n\nللاستفسار: 0795270657`);
+            
+            cart = [];
+            updateCart();
+            toggleCart();
+        }
+
+        // حذف منتج
+        function deleteProduct(productId) {
+            if (confirm('هل أنت متأكد من حذف هذا المنتج؟')) {
+                products = products.filter(p => p.id !== productId);
+                displayProducts();
+                showNotification('تم حذف المنتج بنجاح');
+            }
+        }
+
+        // إضافة منتج جديد
+        function showAddProductModal() {
+            document.getElementById('addProductModal').style.display = 'flex';
+        }
+
+        function closeAddProductModal() {
+            document.getElementById('addProductModal').style.display = 'none';
+        }
+
+        function addNewProduct() {
+            const name = document.getElementById('productName').value;
+            const price = parseFloat(document.getElementById('productPrice').value);
+            const image = document.getElementById('productImage').value;
+            const category = document.getElementById('productCategory').value;
+            
+            if (!name || !price || !image) {
+                alert('الرجاء ملء جميع الحقول');
+                return;
+            }
+            
+            const newId = Math.max(...products.map(p => p.id), 0) + 1;
+            products.push({
+                id: newId,
+                name,
+                price,
+                image,
+                category: category || 'عام'
+            });
+            
+            displayProducts();
+            closeAddProductModal();
+            
+            document.getElementById('productName').value = '';
+            document.getElementById('productPrice').value = '';
+            document.getElementById('productImage').value = '';
+            document.getElementById('productCategory').value = '';
+            
+            showNotification('تم إضافة المنتج بنجاح');
+        }
+
+        // تسجيل الدخول عبر Google (محاكاة)
+        function signInWithGoogle() {
+            // محاكاة تسجيل الدخول (في التطبيق الحقيقي يتم استخدام Firebase Auth)
+            const email = prompt('للتوضيح، أدخل بريدك الإلكتروني:\n(للوصول إلى صلاحية المسؤول استخدم: ghaithkloob7@gmail.com)');
+            if (email) {
+                currentUser = { email: email, displayName: email.split('@')[0] };
+                updateAuthUI();
+                showNotification(`مرحباً ${currentUser.displayName}!`);
+            }
+        }
+
+        function signOut() {
+            currentUser = null;
+            updateAuthUI();
+            showNotification('تم تسجيل الخروج بنجاح');
+        }
+
+        function updateAuthUI() {
+            const authSection = document.getElementById('authSection');
+            const adminPanel = document.getElementById('adminPanel');
+            
+            if (currentUser) {
+                const isAdmin = currentUser.email === 'ghaithkloob7@gmail.com';
+                authSection.innerHTML = `
+                    <div class="user-info">
+                        <span>${currentUser.displayName}</span>
+                        <button class="logout-btn" onclick="signOut()">تسجيل خروج</button>
+                    </div>
+                `;
+                adminPanel.style.display = isAdmin ? 'block' : 'none';
+                if (isAdmin) {
+                    displayProducts(); // إعادة عرض المنتجات لإظهار أزرار الحذف
+                }
+            } else {
+                authSection.innerHTML = `
+                    <div class="google-login" onclick="signInWithGoogle()">
+                        <i class="fab fa-google"></i>
+                        <span>تسجيل الدخول</span>
+                    </div>
+                `;
+                adminPanel.style.display = 'none';
+                displayProducts(); // إعادة عرض المنتجات بدون أزرار الحذف
+            }
+        }
+
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                background: linear-gradient(135deg, #c41e3a 0%, #8b0000 100%);
+                color: white;
+                padding: 1rem 2rem;
+                border-radius: 10px;
+                z-index: 3000;
+                animation: slideUp 0.3s ease;
+                font-weight: 600;
+            `;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3000);
+        }
+
+        // تهيئة الصفحة
+        displayProducts();
+        updateCartCount();
+        
+        window.onclick = function(event) {
+            const cartModal = document.getElementById('cartModal');
+            const addModal = document.getElementById('addProductModal');
+            if (event.target === cartModal) cartModal.style.display = 'none';
+            if (event.target === addModal) addModal.style.display = 'none';
+        }
+    </script>
+</body>
+</html>
